@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: RDS PostgreSQL for Photo Uploader
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: photo-uploader
+  Environment:
+    Type: String
+    Default: prod
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.micro
+  DBName:
+    Type: String
+    Default: photodb
+  DBUsername:
+    Type: String
+    Default: photoapp
+    NoEcho: true
+  DBPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 12
+
+Resources:
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for photo uploader RDS
+      SubnetIds:
+        - !ImportValue !Sub ${ProjectName}-PrivateSubnet1
+        - !ImportValue !Sub ${ProjectName}-PrivateSubnet2
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  DBInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub ${ProjectName}-db
+      DBInstanceClass: !Ref DBInstanceClass
+      Engine: postgres
+      EngineVersion: '16.3'
+      DBName: !Ref DBName
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !ImportValue !Sub ${ProjectName}-RdsSG
+      MultiAZ: true
+      StorageType: gp3
+      AllocatedStorage: 20
+      MaxAllocatedStorage: 100
+      StorageEncrypted: true
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: 03:00-04:00
+      PreferredMaintenanceWindow: sun:05:00-sun:06:00
+      AutoMinorVersionUpgrade: true
+      DeletionProtection: true
+      PubliclyAccessible: false
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  DBHostSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub /${ProjectName}/db/host
+      SecretString: !GetAtt DBInstance.Endpoint.Address
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  DBUserSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub /${ProjectName}/db/username
+      SecretString: !Ref DBUsername
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  DBPasswordSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub /${ProjectName}/db/password
+      SecretString: !Ref DBPassword
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+Outputs:
+  DBEndpoint:
+    Value: !GetAtt DBInstance.Endpoint.Address
+    Export:
+      Name: !Sub ${ProjectName}-DBEndpoint
+
+  DBHostSecretArn:
+    Value: !Ref DBHostSecret
+    Export:
+      Name: !Sub ${ProjectName}-DBHostSecretArn
+
+  DBUserSecretArn:
+    Value: !Ref DBUserSecret
+    Export:
+      Name: !Sub ${ProjectName}-DBUserSecretArn
+
+  DBPasswordSecretArn:
+    Value: !Ref DBPasswordSecret
+    Export:
+      Name: !Sub ${ProjectName}-DBPasswordSecretArn

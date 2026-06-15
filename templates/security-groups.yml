@@ -1,0 +1,79 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Security groups for Photo Uploader
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: photo-uploader
+  Environment:
+    Type: String
+    Default: prod
+
+Resources:
+  AlbSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ALB - allow HTTP and HTTPS from internet
+      VpcId: !ImportValue !Sub ${ProjectName}-VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-alb-sg
+        - Key: Project
+          Value: !Ref ProjectName
+
+  EcsSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ECS tasks - allow traffic only from ALB
+      VpcId: !ImportValue !Sub ${ProjectName}-VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          SourceSecurityGroupId: !Ref AlbSG
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-ecs-sg
+        - Key: Project
+          Value: !Ref ProjectName
+
+  RdsSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: RDS - allow PostgreSQL only from ECS
+      VpcId: !ImportValue !Sub ${ProjectName}-VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref EcsSG
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-rds-sg
+        - Key: Project
+          Value: !Ref ProjectName
+
+Outputs:
+  AlbSGId:
+    Value: !Ref AlbSG
+    Export:
+      Name: !Sub ${ProjectName}-AlbSG
+
+  EcsSGId:
+    Value: !Ref EcsSG
+    Export:
+      Name: !Sub ${ProjectName}-EcsSG
+
+  RdsSGId:
+    Value: !Ref RdsSG
+    Export:
+      Name: !Sub ${ProjectName}-RdsSG

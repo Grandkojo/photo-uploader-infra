@@ -1,0 +1,141 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Root stack - Photo Uploader (nested stacks)
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: photo-uploader
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [prod, staging]
+  GitHubOrg:
+    Type: String
+    Description: GitHub org/username owning the app repository
+  GitHubRepo:
+    Type: String
+    Description: App repository name
+  ContainerImage:
+    Type: String
+    Description: Initial ECR image URI (e.g. <account>.dkr.ecr.<region>.amazonaws.com/photo-uploader:latest)
+  DBPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 12
+    Description: RDS master password (min 12 chars)
+  TemplatesBucketName:
+    Type: String
+    Description: S3 bucket containing nested template files
+
+Resources:
+  VPCStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://${TemplatesBucketName}.s3.amazonaws.com/templates/vpc.yml
+      Parameters:
+        ProjectName: !Ref ProjectName
+        Environment: !Ref Environment
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  S3CloudFrontStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://${TemplatesBucketName}.s3.amazonaws.com/templates/s3-cloudfront.yml
+      Parameters:
+        ProjectName: !Ref ProjectName
+        Environment: !Ref Environment
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  SecurityGroupsStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: VPCStack
+    Properties:
+      TemplateURL: !Sub https://${TemplatesBucketName}.s3.amazonaws.com/templates/security-groups.yml
+      Parameters:
+        ProjectName: !Ref ProjectName
+        Environment: !Ref Environment
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  RDSStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - VPCStack
+      - SecurityGroupsStack
+    Properties:
+      TemplateURL: !Sub https://${TemplatesBucketName}.s3.amazonaws.com/templates/rds.yml
+      Parameters:
+        ProjectName: !Ref ProjectName
+        Environment: !Ref Environment
+        DBPassword: !Ref DBPassword
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  ECRStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://${TemplatesBucketName}.s3.amazonaws.com/templates/ecr.yml
+      Parameters:
+        ProjectName: !Ref ProjectName
+        GitHubOrg: !Ref GitHubOrg
+        GitHubRepo: !Ref GitHubRepo
+        Environment: !Ref Environment
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  ECSStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - VPCStack
+      - SecurityGroupsStack
+      - RDSStack
+      - S3CloudFrontStack
+      - ECRStack
+    Properties:
+      TemplateURL: !Sub https://${TemplatesBucketName}.s3.amazonaws.com/templates/ecs.yml
+      Parameters:
+        ProjectName: !Ref ProjectName
+        Environment: !Ref Environment
+        ContainerImage: !Ref ContainerImage
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  CodePipelineStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - ECSStack
+      - ECRStack
+      - S3CloudFrontStack
+    Properties:
+      TemplateURL: !Sub https://${TemplatesBucketName}.s3.amazonaws.com/templates/codepipeline.yml
+      Parameters:
+        ProjectName: !Ref ProjectName
+        Environment: !Ref Environment
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+Outputs:
+  ALBEndpoint:
+    Description: Application Load Balancer DNS name
+    Value: !GetAtt ECSStack.Outputs.ALBDnsName
+
+  CloudFrontDomain:
+    Description: CloudFront distribution domain
+    Value: !GetAtt S3CloudFrontStack.Outputs.CloudFrontDomain
+
+  ECRRepositoryUri:
+    Description: ECR repository URI
+    Value: !GetAtt ECRStack.Outputs.ECRRepositoryUri
+
+  GitHubActionsRoleArn:
+    Description: ARN for the GitHub Actions OIDC role
+    Value: !GetAtt ECRStack.Outputs.GitHubActionsRoleArn
