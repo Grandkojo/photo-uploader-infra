@@ -46,9 +46,9 @@ Resources:
                 Action:
                   - secretsmanager:GetSecretValue
                 Resource:
-                  - !ImportValue !Sub ${ProjectName}-DBHostSecretArn
-                  - !ImportValue !Sub ${ProjectName}-DBUserSecretArn
-                  - !ImportValue !Sub ${ProjectName}-DBPasswordSecretArn
+                  - Fn::ImportValue: !Sub "${ProjectName}-DBHostSecretArn"
+                  - Fn::ImportValue: !Sub "${ProjectName}-DBUserSecretArn"
+                  - Fn::ImportValue: !Sub "${ProjectName}-DBPasswordSecretArn"
       Tags:
         - Key: Project
           Value: !Ref ProjectName
@@ -75,8 +75,9 @@ Resources:
                   - s3:GetObject
                   - s3:DeleteObject
                 Resource: !Sub
-                  - ${BucketArn}/*
-                  - BucketArn: !ImportValue !Sub ${ProjectName}-PhotosBucketArn
+                  - "${BucketArn}/*"
+                  - BucketArn:
+                      Fn::ImportValue: !Sub "${ProjectName}-PhotosBucketArn"
       Tags:
         - Key: Project
           Value: !Ref ProjectName
@@ -122,20 +123,25 @@ Resources:
             - Name: AWS_REGION
               Value: !Ref AWS::Region
             - Name: S3_BUCKET
-              Value: !ImportValue !Sub ${ProjectName}-PhotosBucket
+              Value:
+                Fn::ImportValue: !Sub "${ProjectName}-PhotosBucket"
             - Name: CLOUDFRONT_DOMAIN
-              Value: !ImportValue !Sub ${ProjectName}-CloudFrontDomain
+              Value:
+                Fn::ImportValue: !Sub "${ProjectName}-CloudFrontDomain"
             - Name: DB_PORT
               Value: '5432'
             - Name: DB_NAME
               Value: photodb
           Secrets:
             - Name: DB_HOST
-              ValueFrom: !ImportValue !Sub ${ProjectName}-DBHostSecretArn
+              ValueFrom:
+                Fn::ImportValue: !Sub "${ProjectName}-DBHostSecretArn"
             - Name: DB_USER
-              ValueFrom: !ImportValue !Sub ${ProjectName}-DBUserSecretArn
+              ValueFrom:
+                Fn::ImportValue: !Sub "${ProjectName}-DBUserSecretArn"
             - Name: DB_PASSWORD
-              ValueFrom: !ImportValue !Sub ${ProjectName}-DBPasswordSecretArn
+              ValueFrom:
+                Fn::ImportValue: !Sub "${ProjectName}-DBPasswordSecretArn"
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -160,10 +166,10 @@ Resources:
       Type: application
       Scheme: internet-facing
       SecurityGroups:
-        - !ImportValue !Sub ${ProjectName}-AlbSG
+        - Fn::ImportValue: !Sub "${ProjectName}-AlbSG"
       Subnets:
-        - !ImportValue !Sub ${ProjectName}-PublicSubnet1
-        - !ImportValue !Sub ${ProjectName}-PublicSubnet2
+        - Fn::ImportValue: !Sub "${ProjectName}-PublicSubnet1"
+        - Fn::ImportValue: !Sub "${ProjectName}-PublicSubnet2"
       Tags:
         - Key: Project
           Value: !Ref ProjectName
@@ -176,7 +182,8 @@ Resources:
       Port: 3000
       Protocol: HTTP
       TargetType: ip
-      VpcId: !ImportValue !Sub ${ProjectName}-VpcId
+      VpcId:
+        Fn::ImportValue: !Sub "${ProjectName}-VpcId"
       HealthCheckPath: /health
       HealthCheckIntervalSeconds: 30
       HealthCheckTimeoutSeconds: 5
@@ -193,7 +200,8 @@ Resources:
       Port: 3000
       Protocol: HTTP
       TargetType: ip
-      VpcId: !ImportValue !Sub ${ProjectName}-VpcId
+      VpcId:
+        Fn::ImportValue: !Sub "${ProjectName}-VpcId"
       HealthCheckPath: /health
       HealthCheckIntervalSeconds: 30
       HealthCheckTimeoutSeconds: 5
@@ -238,10 +246,10 @@ Resources:
       NetworkConfiguration:
         AwsvpcConfiguration:
           Subnets:
-            - !ImportValue !Sub ${ProjectName}-PrivateSubnet1
-            - !ImportValue !Sub ${ProjectName}-PrivateSubnet2
+            - Fn::ImportValue: !Sub "${ProjectName}-PrivateSubnet1"
+            - Fn::ImportValue: !Sub "${ProjectName}-PrivateSubnet2"
           SecurityGroups:
-            - !ImportValue !Sub ${ProjectName}-EcsSG
+            - Fn::ImportValue: !Sub "${ProjectName}-EcsSG"
           AssignPublicIp: DISABLED
       LoadBalancers:
         - ContainerName: photo-uploader
@@ -257,10 +265,9 @@ Resources:
     Properties:
       MinCapacity: 1
       MaxCapacity: 4
-      ResourceId: !Sub service/${ECSCluster}/${ECSService.Name}
+      ResourceId: !Sub "service/${ECSCluster}/${ECSService.Name}"
       ScalableDimension: ecs:service:DesiredCount
       ServiceNamespace: ecs
-      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService
 
   ScaleUpPolicy:
     Type: AWS::ApplicationAutoScaling::ScalingPolicy

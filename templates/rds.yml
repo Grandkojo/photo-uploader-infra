@@ -29,8 +29,8 @@ Resources:
     Properties:
       DBSubnetGroupDescription: Subnet group for photo uploader RDS
       SubnetIds:
-        - !ImportValue !Sub ${ProjectName}-PrivateSubnet1
-        - !ImportValue !Sub ${ProjectName}-PrivateSubnet2
+        - Fn::ImportValue: !Sub "${ProjectName}-PrivateSubnet1"
+        - Fn::ImportValue: !Sub "${ProjectName}-PrivateSubnet2"
       Tags:
         - Key: Project
           Value: !Ref ProjectName
@@ -48,7 +48,7 @@ Resources:
       MasterUserPassword: !Ref DBPassword
       DBSubnetGroupName: !Ref DBSubnetGroup
       VPCSecurityGroups:
-        - !ImportValue !Sub ${ProjectName}-RdsSG
+        - Fn::ImportValue: !Sub "${ProjectName}-RdsSG"
       MultiAZ: true
       StorageType: gp3
       AllocatedStorage: 20

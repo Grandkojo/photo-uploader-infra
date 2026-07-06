@@ -14,7 +14,9 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: ALB - allow HTTP and HTTPS from internet
-      VpcId: !ImportValue !Sub ${ProjectName}-VpcId
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: "${ProjectName}-VpcId"
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -34,7 +36,9 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: ECS tasks - allow traffic only from ALB
-      VpcId: !ImportValue !Sub ${ProjectName}-VpcId
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: "${ProjectName}-VpcId"
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 3000
@@ -50,7 +54,9 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: RDS - allow PostgreSQL only from ECS
-      VpcId: !ImportValue !Sub ${ProjectName}-VpcId
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: "${ProjectName}-VpcId"
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 5432

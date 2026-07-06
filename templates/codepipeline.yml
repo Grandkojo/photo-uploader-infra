@@ -38,17 +38,21 @@ Resources:
       LoadBalancerInfo:
         TargetGroupPairInfoList:
           - TargetGroups:
-              - Name: !ImportValue !Sub ${ProjectName}-BlueTargetGroupName
-              - Name: !ImportValue !Sub ${ProjectName}-GreenTargetGroupName
+              - Name:
+                  Fn::ImportValue: !Sub "${ProjectName}-BlueTargetGroupName"
+              - Name:
+                  Fn::ImportValue: !Sub "${ProjectName}-GreenTargetGroupName"
             ProdTrafficRoute:
               ListenerArns:
-                - !ImportValue !Sub ${ProjectName}-ALBListenerArn
+                - Fn::ImportValue: !Sub "${ProjectName}-ALBListenerArn"
             TestTrafficRoute:
               ListenerArns:
-                - !ImportValue !Sub ${ProjectName}-ALBTestListenerArn
+                - Fn::ImportValue: !Sub "${ProjectName}-ALBTestListenerArn"
       ECSServices:
-        - ClusterName: !ImportValue !Sub ${ProjectName}-ECSCluster
-          ServiceName: !ImportValue !Sub ${ProjectName}-ECSServiceName
+        - ClusterName:
+            Fn::ImportValue: !Sub "${ProjectName}-ECSCluster"
+          ServiceName:
+            Fn::ImportValue: !Sub "${ProjectName}-ECSServiceName"
 
   # IAM Roles
   CodeDeployRole:
