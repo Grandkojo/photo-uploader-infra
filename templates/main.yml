@@ -17,15 +17,25 @@ Parameters:
     Description: App repository name
   ContainerImage:
     Type: String
-    Description: Initial ECR image URI (e.g. <account>.dkr.ecr.<region>.amazonaws.com/photo-uploader:latest)
-  DBPassword:
-    Type: String
-    NoEcho: true
-    MinLength: 12
-    Description: RDS master password (min 12 chars)
+    Default: public.ecr.aws/docker/library/node:20-alpine
+    Description: >
+      Initial container image for ECS. Use the placeholder default for the very
+      first deploy. After GitHub Actions pushes the real image to ECR, CodeDeploy
+      manages all subsequent deployments — this parameter is never updated again.
   TemplatesBucketName:
     Type: String
-    Description: S3 bucket containing nested template files
+    Description: S3 bucket containing the uploaded nested template files
+  DeployPipeline:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >
+      Set to "true" only after an image exists in ECR with the "latest" tag.
+      CodePipeline CreatePipeline validates the ECR image exists at creation time.
+      Phase 1: deploy with "false". Push seed image to ECR. Phase 2: set to "true".
+
+Conditions:
+  CreatePipeline: !Equals [!Ref DeployPipeline, "true"]
 
 Resources:
   VPCStack:
@@ -72,7 +82,6 @@ Resources:
       Parameters:
         ProjectName: !Ref ProjectName
         Environment: !Ref Environment
-        DBPassword: !Ref DBPassword
       Tags:
         - Key: Project
           Value: !Ref ProjectName
@@ -110,6 +119,7 @@ Resources:
 
   CodePipelineStack:
     Type: AWS::CloudFormation::Stack
+    Condition: CreatePipeline
     DependsOn:
       - ECSStack
       - ECRStack

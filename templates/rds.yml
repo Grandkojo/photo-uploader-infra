@@ -18,11 +18,6 @@ Parameters:
     Type: String
     Default: photoapp
     NoEcho: true
-  DBPassword:
-    Type: String
-    NoEcho: true
-    MinLength: 12
-
 Resources:
   DBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
@@ -37,15 +32,15 @@ Resources:
 
   DBInstance:
     Type: AWS::RDS::DBInstance
-    DeletionPolicy: Snapshot
+    DeletionPolicy: Delete
     Properties:
       DBInstanceIdentifier: !Sub ${ProjectName}-db
       DBInstanceClass: !Ref DBInstanceClass
       Engine: postgres
-      EngineVersion: '16.3'
+      EngineVersion: '16.9'
       DBName: !Ref DBName
       MasterUsername: !Ref DBUsername
-      MasterUserPassword: !Ref DBPassword
+      MasterUserPassword: '{{resolve:ssm-secure:/photo-uploader/db/password}}'
       DBSubnetGroupName: !Ref DBSubnetGroup
       VPCSecurityGroups:
         - Fn::ImportValue: !Sub "${ProjectName}-RdsSG"
@@ -58,7 +53,7 @@ Resources:
       PreferredBackupWindow: 03:00-04:00
       PreferredMaintenanceWindow: sun:05:00-sun:06:00
       AutoMinorVersionUpgrade: true
-      DeletionProtection: true
+      DeletionProtection: false
       PubliclyAccessible: false
       Tags:
         - Key: Project
@@ -84,15 +79,6 @@ Resources:
         - Key: Project
           Value: !Ref ProjectName
 
-  DBPasswordSecret:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Name: !Sub /${ProjectName}/db/password
-      SecretString: !Ref DBPassword
-      Tags:
-        - Key: Project
-          Value: !Ref ProjectName
-
 Outputs:
   DBEndpoint:
     Value: !GetAtt DBInstance.Endpoint.Address
@@ -109,7 +95,7 @@ Outputs:
     Export:
       Name: !Sub ${ProjectName}-DBUserSecretArn
 
-  DBPasswordSecretArn:
-    Value: !Ref DBPasswordSecret
+  DBPasswordSSMParam:
+    Value: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/photo-uploader/db/password"
     Export:
-      Name: !Sub ${ProjectName}-DBPasswordSecretArn
+      Name: !Sub ${ProjectName}-DBPasswordSSMArn

@@ -1,5 +1,20 @@
 # CloudFormation GitSync deployment file
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/git-sync.html
+#
+# SETUP BEFORE FIRST DEPLOY:
+# 1. Create the DB password in SSM (once, not committed to git):
+#    aws ssm put-parameter \
+#      --name /photo-uploader/db/password \
+#      --value "YourStrongPassword123!" \
+#      --type SecureString \
+#      --region <your-region>
+#
+# 2. Replace <YOUR_ACCOUNT_ID> in TemplatesBucketName below with your 12-digit AWS account ID.
+#
+# 3. Run ./deploy.sh to bootstrap: uploads nested templates to S3 and creates the stack.
+#
+# 4. In the AWS Console → CloudFormation → GitSync, connect this file in the infra repo.
+#    After that, any push that changes this file auto-triggers a stack update.
 template-file-path: ./templates/main.yml
 
 parameters:
@@ -7,9 +22,16 @@ parameters:
   Environment: prod
   GitHubOrg: Grandkojo
   GitHubRepo: photo-uploader
-  ContainerImage: YOUR_ACCOUNT_ID.dkr.ecr.YOUR_REGION.amazonaws.com/photo-uploader:latest
-  DBPassword: YOUR_SECURE_PASSWORD_HERE
-  TemplatesBucketName: photo-uploader-cfn-YOUR_ACCOUNT_ID
+  # Placeholder image used only for the very first deploy.
+  # After the CI/CD pipeline runs once, CodeDeploy manages all subsequent image deployments.
+  ContainerImage: public.ecr.aws/docker/library/node:20-alpine
+  # Replace <YOUR_ACCOUNT_ID> with your 12-digit AWS account ID (e.g. photo-uploader-cfn-123456789012)
+  # The DB password is read directly from SSM SecureString at deploy time — no parameter needed here.
+  TemplatesBucketName: photo-uploader-cfn-843632604592
+  # CodePipeline requires an ECR image to exist at creation time.
+  # deploy.sh handles the two-phase bootstrap (phase 1 without pipeline, seeds ECR, phase 2 with pipeline).
+  # GitSync always runs with "true" because deploy.sh has already seeded ECR before GitSync is enabled.
+  DeployPipeline: "true"
 
 tags:
   Project: photo-uploader

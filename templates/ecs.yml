@@ -48,7 +48,18 @@ Resources:
                 Resource:
                   - Fn::ImportValue: !Sub "${ProjectName}-DBHostSecretArn"
                   - Fn::ImportValue: !Sub "${ProjectName}-DBUserSecretArn"
-                  - Fn::ImportValue: !Sub "${ProjectName}-DBPasswordSecretArn"
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameters
+                Resource:
+                  - Fn::ImportValue: !Sub "${ProjectName}-DBPasswordSSMArn"
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    kms:ViaService: !Sub "ssm.${AWS::Region}.amazonaws.com"
       Tags:
         - Key: Project
           Value: !Ref ProjectName
@@ -114,6 +125,12 @@ Resources:
       ContainerDefinitions:
         - Name: photo-uploader
           Image: !Ref ContainerImage
+          # Placeholder command: runs a minimal HTTP server so the ALB health check passes
+          # before the real app image is deployed via CodeDeploy.
+          Command:
+            - node
+            - -e
+            - "const http=require('http');http.createServer((_,r)=>{r.writeHead(200);r.end('OK')}).listen(3000)"
           PortMappings:
             - ContainerPort: 3000
               Protocol: tcp
@@ -141,19 +158,13 @@ Resources:
                 Fn::ImportValue: !Sub "${ProjectName}-DBUserSecretArn"
             - Name: DB_PASSWORD
               ValueFrom:
-                Fn::ImportValue: !Sub "${ProjectName}-DBPasswordSecretArn"
+                Fn::ImportValue: !Sub "${ProjectName}-DBPasswordSSMArn"
           LogConfiguration:
             LogDriver: awslogs
             Options:
               awslogs-group: /ecs/photo-uploader
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
-          HealthCheck:
-            Command: [CMD-SHELL, "wget -qO- http://localhost:3000/health || exit 1"]
-            Interval: 30
-            Timeout: 5
-            Retries: 3
-            StartPeriod: 10
       Tags:
         - Key: Project
           Value: !Ref ProjectName
