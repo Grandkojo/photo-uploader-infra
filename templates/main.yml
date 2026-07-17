@@ -41,7 +41,7 @@ Resources:
   VPCStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://${TemplatesBucketName}.s3.amazonaws.com/templates/vpc.yml
+      TemplateURL: !Sub https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/templates/vpc.yml
       Parameters:
         ProjectName: !Ref ProjectName
         Environment: !Ref Environment
@@ -52,7 +52,7 @@ Resources:
   S3CloudFrontStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://${TemplatesBucketName}.s3.amazonaws.com/templates/s3-cloudfront.yml
+      TemplateURL: !Sub https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/templates/s3-cloudfront.yml
       Parameters:
         ProjectName: !Ref ProjectName
         Environment: !Ref Environment
@@ -64,7 +64,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     DependsOn: VPCStack
     Properties:
-      TemplateURL: !Sub https://${TemplatesBucketName}.s3.amazonaws.com/templates/security-groups.yml
+      TemplateURL: !Sub https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/templates/security-groups.yml
       Parameters:
         ProjectName: !Ref ProjectName
         Environment: !Ref Environment
@@ -78,7 +78,7 @@ Resources:
       - VPCStack
       - SecurityGroupsStack
     Properties:
-      TemplateURL: !Sub https://${TemplatesBucketName}.s3.amazonaws.com/templates/rds.yml
+      TemplateURL: !Sub https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/templates/rds.yml
       Parameters:
         ProjectName: !Ref ProjectName
         Environment: !Ref Environment
@@ -89,7 +89,7 @@ Resources:
   ECRStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://${TemplatesBucketName}.s3.amazonaws.com/templates/ecr.yml
+      TemplateURL: !Sub https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/templates/ecr.yml
       Parameters:
         ProjectName: !Ref ProjectName
         GitHubOrg: !Ref GitHubOrg
@@ -108,7 +108,7 @@ Resources:
       - S3CloudFrontStack
       - ECRStack
     Properties:
-      TemplateURL: !Sub https://${TemplatesBucketName}.s3.amazonaws.com/templates/ecs.yml
+      TemplateURL: !Sub https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/templates/ecs.yml
       Parameters:
         ProjectName: !Ref ProjectName
         Environment: !Ref Environment
@@ -125,7 +125,7 @@ Resources:
       - ECRStack
       - S3CloudFrontStack
     Properties:
-      TemplateURL: !Sub https://${TemplatesBucketName}.s3.amazonaws.com/templates/codepipeline.yml
+      TemplateURL: !Sub https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/templates/codepipeline.yml
       Parameters:
         ProjectName: !Ref ProjectName
         Environment: !Ref Environment
