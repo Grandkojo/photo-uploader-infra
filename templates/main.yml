@@ -129,6 +129,8 @@ Resources:
       Parameters:
         ProjectName: !Ref ProjectName
         Environment: !Ref Environment
+        GitHubOrg: !Ref GitHubOrg
+        GitHubRepo: !Ref GitHubRepo
       Tags:
         - Key: Project
           Value: !Ref ProjectName

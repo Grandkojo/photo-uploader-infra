@@ -8,6 +8,12 @@ Parameters:
   Environment:
     Type: String
     Default: prod
+  GitHubOrg:
+    Type: String
+    Description: GitHub org/username owning the app repository
+  GitHubRepo:
+    Type: String
+    Description: App repository name
 
 Resources:
   # CodeDeploy Application
@@ -103,6 +109,9 @@ Resources:
                   - codedeploy:GetDeploymentConfig
                   - codedeploy:GetApplicationRevision
                   - codedeploy:RegisterApplicationRevision
+                  - codedeploy:GetApplication
+                  - codedeploy:GetDeploymentGroup
+                  - codedeploy:ListDeploymentGroups
                 Resource: '*'
               - Effect: Allow
                 Action:
@@ -117,6 +126,11 @@ Resources:
                 Action:
                   - ecr:DescribeImages
                 Resource: '*'
+              - Effect: Allow
+                Action:
+                  - codestar-connections:UseConnection
+                  - codeconnections:UseConnection
+                Resource: arn:aws:codeconnections:eu-west-1:843632604592:connection/0dedd531-9e2f-4d4d-822f-b5fd9d52b0e0
               - Effect: Allow
                 Action:
                   - iam:PassRole
@@ -152,6 +166,9 @@ Resources:
         - Key: Project
           Value: !Ref ProjectName
 
+  # Using the existing available GitHub connection from the account
+  # arn:aws:codeconnections:eu-west-1:843632604592:connection/0dedd531-9e2f-4d4d-822f-b5fd9d52b0e0
+
   # CodePipeline
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -174,7 +191,21 @@ Resources:
                 RepositoryName: !Ref ProjectName
                 ImageTag: latest
               OutputArtifacts:
-                - Name: SourceOutput
+                - Name: ECROutput
+              RunOrder: 1
+            - Name: GitHubSource
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: '1'
+              Configuration:
+                ConnectionArn: arn:aws:codeconnections:eu-west-1:843632604592:connection/0dedd531-9e2f-4d4d-822f-b5fd9d52b0e0
+                FullRepositoryId: !Sub ${GitHubOrg}/${GitHubRepo}
+                BranchName: main
+                OutputArtifactFormat: CODE_ZIP
+              OutputArtifacts:
+                - Name: GitOutput
               RunOrder: 1
         - Name: Deploy
           Actions:
@@ -187,14 +218,15 @@ Resources:
               Configuration:
                 ApplicationName: !Ref CodeDeployApp
                 DeploymentGroupName: !Ref CodeDeployDeploymentGroup
-                TaskDefinitionTemplateArtifact: SourceOutput
+                TaskDefinitionTemplateArtifact: GitOutput
                 TaskDefinitionTemplatePath: taskdef.json
-                AppSpecTemplateArtifact: SourceOutput
+                AppSpecTemplateArtifact: GitOutput
                 AppSpecTemplatePath: appspec.yml
-                Image1ArtifactName: SourceOutput
-                Image1ContainerName: IMAGE_URI
+                Image1ArtifactName: ECROutput
+                Image1ContainerName: photo-uploader
               InputArtifacts:
-                - Name: SourceOutput
+                - Name: ECROutput
+                - Name: GitOutput
               RunOrder: 1
       Tags:
         - Key: Project
